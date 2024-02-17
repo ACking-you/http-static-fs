@@ -31,13 +31,11 @@ fn get_local_addr() -> String {
 }
 
 impl Config {
-    fn get_bind_addr(&self) -> String {
-        let port = match self.port {
+    fn get_port_or_default(&self) -> u16 {
+        match self.port {
             Some(p) => p,
             None => DEFAULT_PORT,
-        };
-        let local_addr = get_local_addr();
-        format!("{local_addr}:{port}")
+        }
     }
 
     fn get_mount_path_or_default(&self) -> &str {
@@ -58,14 +56,17 @@ impl Config {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let config = Config::parse();
-
-    let bind_addr = config.get_bind_addr();
-    println!(
-        "The file service is about to listen to `http://{bind_addr}{}`",
+    let port = config.get_port_or_default();
+    let bind_addr = format!("0.0.0.0:{port}");
+    let local_http_server_addr = format!(
+        "http://{}:{}{}",
+        get_local_addr(),
+        port,
         config.get_mount_path_or_default()
     );
+    println!("The file service is about to listen to `{local_http_server_addr}`",);
     // show QR code
-    let code = QrCode::new(bind_addr.as_str()).unwrap();
+    let code = QrCode::new(local_http_server_addr.as_str()).expect("get qrcode never fails");
     let connect_code = code
         .render::<char>()
         .quiet_zone(false)
