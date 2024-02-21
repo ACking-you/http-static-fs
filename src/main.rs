@@ -1,6 +1,7 @@
 use actix_files as fs;
-use actix_web::{App, HttpServer};
+use actix_web::{middleware, App, HttpServer};
 use clap::Parser;
+use env_logger::Env;
 use local_ip_address::local_ip;
 use mimalloc_rust::GlobalMiMalloc;
 use qrcode::QrCode;
@@ -55,6 +56,7 @@ impl Config {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    init_logger();
     let config = Config::parse();
     let port = config.get_port_or_default();
     let bind_addr = format!("0.0.0.0:{port}");
@@ -76,7 +78,7 @@ async fn main() -> std::io::Result<()> {
 
     // start server
     HttpServer::new(move || {
-        App::new().service(
+        App::new().wrap(middleware::Logger::default()).service(
             fs::Files::new(
                 config.get_mount_path_or_default(),
                 config.get_relative_path_or_default(),
@@ -88,4 +90,10 @@ async fn main() -> std::io::Result<()> {
     .bind(bind_addr.as_str())?
     .run()
     .await
+}
+
+fn init_logger() {
+    let env = Env::default().filter_or("RUST_LOG", "info");
+    env_logger::Builder::from_env(env).init();
+    log::info!("env_logger initialized.");
 }
